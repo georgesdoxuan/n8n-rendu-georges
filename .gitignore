@@ -1,0 +1,35 @@
+# Secrets
+HQ/.woo_creds.json
+HQ/.mcp_creds.json
+deploy/stack.env
+# Sorties de sauvegarde (89 Mo par run)
+backups/
+
+# n8ncli ignored files
+n8n/config/sync-state.json
+n8n/config/unconfigured-credentials.json
+n8n/config/workflow-folders.json
+n8n/references/
+
+# Cache n8ncli
+n8n/config/cache/
+
+# Workflows AltBrat (autre filiale, hors périmètre Brume — ne pas publier)
+n8n/workflows/Gardien de commande*.workflow.ts
+n8n/workflows/SAV,*workflow.ts
+n8n/workflows/Veille emploi remote*.workflow.ts
+n8n/workflows/Idées jeux casino Stake*.workflow.ts
+.DS_Store
+
+# Fichiers hors périmètre du cours (restent en local, non versionnés)
+HANDOFF.md
+HQ/
+deploy/
+recherche-niche/
+wp-content/
+
+# Templates et workflows tiers (vivent dans n8n, pas dans le rendu GitHub)
+n8n/workflows/Template/
+n8n/workflows/RAG E-Com*.workflow.ts
+n8n/RAG - E-Com/
+specs/shark-cage-sons.md
