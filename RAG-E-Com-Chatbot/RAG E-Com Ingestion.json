@@ -1,0 +1,565 @@
+{
+  "name": "RAG E-Com Ingestion",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "={{ Object.keys($binary)[0] }}",
+        "options": {}
+      },
+      "id": "3ce7c09b-aee3-4ec0-8c5f-5cfd3b20ecdb",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        864,
+        272
+      ],
+      "notesInFlow": true,
+      "notes": "Extracts raw text content from the uploaded PDF file."
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "scope": "node",
+        "historySize": 1000,
+        "dedupeValue": "={{ ($json.mode === 'Replace all documents' ? 'run-' + Date.now() : $json.source + '::' + $json.page + '::' + $json.content.slice(0, 60)) }}"
+      },
+      "id": "42e6a0b9-e3b5-40fc-9c6f-baac12e74d13",
+      "name": "Skip Already Ingested",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        272
+      ],
+      "notes": "Long-term memory across executions: skips the upload if this exact document content was already ingested, preventing duplicate chunks in Supabase."
+    },
+    {
+      "parameters": {
+        "formTitle": "RAG E-Com Upload",
+        "formDescription": "Add a PDF to the knowledge base, remove one, or replace everything. Multiple documents can coexist.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Mode",
+              "fieldType": "dropdown",
+              "defaultValue": "Add document",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Add document"
+                  },
+                  {
+                    "option": "Remove document"
+                  },
+                  {
+                    "option": "Replace all documents"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Document",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".pdf"
+            },
+            {
+              "fieldLabel": "Document Name",
+              "placeholder": "for removal: exact source name, e.g. cdc_25517_DS1.pdf"
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Apply",
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Request received. Processing is running."
+            }
+          }
+        }
+      },
+      "id": "5ff41ce0-c8c2-4024-8953-023c69478bfc",
+      "name": "Upload Document",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -704,
+        80
+      ],
+      "webhookId": "74436a0d-b7b7-4622-85d2-486bd90a8073",
+      "notes": "Public form: anyone can upload a PDF file or paste a PDF URL. The file path and the URL path converge on the same extraction pipeline."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "mode-remove",
+              "leftValue": "={{ $json['Mode'] || $json.mode || $json.body?.mode || 'Add document' }}",
+              "rightValue": "Remove document",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c91c3e27-0e1a-43f7-af76-27152e8991eb",
+      "name": "Route Mode",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -480,
+        176
+      ],
+      "notes": "Routes on the requested mode: Remove goes to the targeted delete branch, everything else continues toward ingestion."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2.2
+          },
+          "conditions": [
+            {
+              "id": "mode-replace",
+              "leftValue": "={{ $json['Mode'] || $json.mode || $json.body?.mode || 'Add document' }}",
+              "rightValue": "Replace all documents",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ab6d4ef3-23c8-478a-9b2f-be9b4c50bc6a",
+      "name": "Check Replace All",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -272,
+        272
+      ],
+      "notes": "When mode is Replace All, the documents table is wiped before the new document is ingested."
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "documents",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "source",
+              "condition": "eq",
+              "keyValue": "={{ $json['Document Name'] || $json.name || $json.body?.name }}"
+            }
+          ]
+        }
+      },
+      "id": "054ce54a-e6c0-4d3a-8721-07949ac044b3",
+      "name": "Delete Document",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        80
+      ],
+      "notes": "Removes every chunk whose metadata source matches the given document name.",
+      "credentials": {
+        "supabaseApi": {
+          "id": "bEmTjDSWtMLEUUQq",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "documents",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "gte",
+              "keyValue": "1"
+            }
+          ]
+        }
+      },
+      "id": "ed5d2ada-afbc-4479-a83d-d876445d9375",
+      "name": "Clear Documents",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        352
+      ],
+      "alwaysOutputData": true,
+      "notes": "Deletes every row of the documents table (Replace All mode).",
+      "credentials": {
+        "supabaseApi": {
+          "id": "bEmTjDSWtMLEUUQq",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Captures the source document name from the uploaded binary filename (for\n// metadata tagging and targeted removal). Keeps all original fields (including\n// the mode) so downstream routing keeps working.\nconst binKey = Object.keys($binary || {})[0];\nconst source = binKey && $binary[binKey] && $binary[binKey].fileName\n  ? $binary[binKey].fileName\n  : 'document.pdf';\nreturn $input.all().map((item) => ({\n  json: { ...item.json, source },\n  binary: item.binary,\n}));"
+      },
+      "id": "880fc8fc-52f8-4e59-a427-05c9e4627ec6",
+      "name": "Prepare Source",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        272
+      ],
+      "notes": "Captures the source document name from the uploaded binary filename or the download URL, and passes the binary through to extraction."
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Splits the extracted PDF pages into overlapping chunks and tags each chunk\n// with its source document, page number, and routing mode (re-injected here\n// because Extract PDF Text drops the original json fields).\nconst source = $('Prepare Source').first().json.source || 'document.pdf';\nlet mode = 'Add document';\ntry {\n  const form = $('Upload Document').first().json;\n  if (form['Mode']) mode = form['Mode'];\n} catch (e) {}\nconst items = $input.all();\nconst pages = [];\nfor (const item of items) {\n  const j = item.json;\n  if (typeof j === 'string') { pages.push({ text: j }); continue; }\n  if (Array.isArray(j?.pages)) { pages.push(...j.pages); continue; }\n  if (typeof j?.text === 'string') { pages.push(j); continue; }\n  if (typeof j?.data === 'string') { pages.push({ text: j.data }); continue; }\n  if (j?.data && typeof j.data === 'object') {\n    if (Array.isArray(j.data.pages)) pages.push(...j.data.pages);\n    else pages.push(j.data);\n    continue;\n  }\n  pages.push(j);\n}\n\nconst CHUNK_SIZE = 1500;\nconst OVERLAP = 200;\nconst chunks = [];\nfor (const [pageIndex, page] of pages.entries()) {\n  const text = String(page?.text ?? page?.content ?? page ?? '')\n    .replace(/\\s+/g, ' ')\n    .trim();\n  if (!text) continue;\n  const pageNumber = Number(page?.page ?? page?.pageNumber ?? pageIndex + 1) || pageIndex + 1;\n  for (let start = 0; start < text.length; start += CHUNK_SIZE - OVERLAP) {\n    chunks.push({\n      content: text.slice(start, start + CHUNK_SIZE).trim(),\n      source,\n      page: pageNumber,\n      mode,\n    });\n    if (start + CHUNK_SIZE >= text.length) break;\n  }\n}\nreturn chunks;"
+      },
+      "id": "cab99912-c60c-41db-86e0-8f6e74f047d6",
+      "name": "Chunk Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        272
+      ],
+      "notes": "Splits the extracted text into 1500-character chunks with 200-character overlap, tagging each chunk with its source document and page number."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"content\": {\n    \"parts\": [\n      {\n        \"text\": {{ $json.content.trim() ? $json.content.trim().toJsonString() : '\"empty\"' }}\n      }\n    ]\n  },\n  \"output_dimensionality\": 512,\n  \"taskType\": \"RETRIEVAL_DOCUMENT\"\n}",
+        "options": {}
+      },
+      "id": "09635813-1c6e-4898-a7ca-a311032f53ac",
+      "name": "Embed Chunks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1536,
+        272
+      ],
+      "notes": "Computes a 512-dimensional embedding for each chunk with the Gemini embedding API in retrieval-document mode.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "1G2cMNKBw5LxbWTO",
+          "name": "Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "row-content",
+              "name": "content",
+              "value": "={{ $('Skip Already Ingested').item.json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "row-meta",
+              "name": "metadata",
+              "value": "{}",
+              "type": "string"
+            },
+            {
+              "id": "row-source",
+              "name": "source",
+              "value": "={{ $('Skip Already Ingested').item.json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "row-page",
+              "name": "page",
+              "value": "={{ $('Skip Already Ingested').item.json.page }}",
+              "type": "number"
+            },
+            {
+              "id": "row-emb",
+              "name": "embedding",
+              "value": "={{ JSON.stringify($json.embedding.values) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "26c8073c-f4af-44f2-99b9-9912450a38c7",
+      "name": "Prepare Row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1760,
+        272
+      ],
+      "notes": "Rebuilds the row fields dropped by the embedding HTTP call and flattens the embedding into a JSON float array string."
+    },
+    {
+      "parameters": {
+        "tableId": "documents",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ $json.content }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ $json.metadata }}"
+            },
+            {
+              "fieldId": "embedding",
+              "fieldValue": "={{ $json.embedding }}"
+            },
+            {
+              "fieldId": "source",
+              "fieldValue": "={{ $json.source }}"
+            },
+            {
+              "fieldId": "page",
+              "fieldValue": "={{ $json.page }}"
+            }
+          ]
+        }
+      },
+      "id": "ec93bf2b-e59a-4741-bedc-06bf86967e3e",
+      "name": "Store Chunks",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1984,
+        272
+      ],
+      "notes": "Inserts each chunk with its metadata and embedding into the documents table in bulk.",
+      "credentials": {
+        "supabaseApi": {
+          "id": "bEmTjDSWtMLEUUQq",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "2c576a01-3a75-48ee-90ff-023bf4b591e8",
+      "name": "Keep Trigger Input",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        640
+      ],
+      "notes": "Passes the original trigger item (with its binary file) through while the Clear Documents branch runs."
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "useDataOfInput": "1"
+      },
+      "id": "545738f4-6890-4e5e-8060-c3c6918acc7e",
+      "name": "After Clear",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -16,
+        480
+      ],
+      "notes": "Waits for the Clear Documents branch to finish, then forwards the original trigger item so the replace starts from a clean table without losing the uploaded file."
+    }
+  ],
+  "connections": {
+    "Upload Document": {
+      "main": [
+        [
+          {
+            "node": "Route Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Mode": {
+      "main": [
+        [
+          {
+            "node": "Delete Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Replace All",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Source": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Chunk Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Already Ingested": {
+      "main": [
+        [
+          {
+            "node": "Embed Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Chunks": {
+      "main": [
+        [
+          {
+            "node": "Prepare Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Row": {
+      "main": [
+        [
+          {
+            "node": "Store Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Replace All": {
+      "main": [
+        [
+          {
+            "node": "Keep Trigger Input",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Clear Documents",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Trigger Input": {
+      "main": [
+        [
+          {
+            "node": "After Clear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Documents": {
+      "main": [
+        [
+          {
+            "node": "After Clear",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Chunk Document": {
+      "main": [
+        [
+          {
+            "node": "Skip Already Ingested",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After Clear": {
+      "main": [
+        [
+          {
+            "node": "Prepare Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "binaryMode": "separate",
+    "description": "RAG ingestion pipeline: receives the source PDF via webhook, cleans and chunks the text, embeds chunks with Gemini, and stores them in the rag_ecom_documents data table.",
+    "availableInMCP": true,
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "export"
+  }
+}
