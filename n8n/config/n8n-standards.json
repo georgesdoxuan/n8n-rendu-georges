@@ -94,7 +94,16 @@
       "Mailgun",
       "sub-clusters",
       "sub-cluster",
-      "human-in-the-loop"
+      "human-in-the-loop",
+      "OpenAI-compatible",
+      "gemini-embedding",
+      "RPC",
+      "short-term",
+      "long-term",
+      "multipart",
+      "form-data",
+      "ecom",
+      "OpenAI"
     ],
     "_comment_allowedWords": "Add custom words here that are specific to your workflows to prevent spelling warnings.",
     "errorMessage": "Text, names, and variables must be written in English."

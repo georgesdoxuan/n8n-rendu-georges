@@ -33,3 +33,11 @@ n8n/workflows/Template/
 n8n/workflows/RAG E-Com*.workflow.ts
 n8n/RAG - E-Com/
 specs/shark-cage-sons.md
+
+# Fichiers locaux et materiel de test
+.DS_Store
+n8n/PDF a tester/
+n8n/RAG - Chat.json
+n8n/RAG - Ingestion.json
+n8n/RAG - E-Com/
+n8n/backups/

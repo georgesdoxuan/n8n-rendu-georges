@@ -26,6 +26,15 @@ une data table n8n.
 5. **Log structuré** : chaque run insère une ligne dans la data table
  `brume_idees`, même si la génération d'image échoue (branche parallèle).
 
+
+## Autre projet du repo : Chatbot RAG E-Com
+
+Voir le dossier **`RAG-E-Com-Chatbot/`** : chatbot RAG complet (upload de PDF par
+formulaire n8n, vectorisation dans Supabase pgvector, chat avec mémoire
+persistante, recherche hybride, reranking et réponses citées). Workflows
+importables (JSON), SQL de setup et README d'installation inclus. Leurs sources
+TypeScript vivent dans `n8n/workflows/RAG E-Com/`.
+
 ## Architecture
 
 ```
