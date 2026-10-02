@@ -1,19 +1,30 @@
-# Chatbot RAG E-Com (n8n + Supabase)
+# Projet 2 : Chatbot RAG E-Com (n8n + Supabase)
 
 Chatbot RAG : on dépose un PDF via un formulaire n8n, il est découpé et vectorisé
 dans Supabase (pgvector), puis on discute avec un chatbot qui répond UNIQUEMENT
 depuis les documents, avec citations et mémoire de conversation persistante.
 
-Contenu du dossier :
-- `RAG E-Com Ingestion.json` : formulaire d'upload + modes Add / Remove /
+## Contenu de ce dossier
+
+- `exports/RAG E-Com Ingestion.json` : formulaire d'upload + modes Add / Remove /
   Replace (gestion de plusieurs documents).
-- `RAG E-Com Answering.json` : chatbot complet (mémoire persistante, routage de
-  la question, recherche hybride vectorielle + mots-clés, reranking, réponse citée).
+- `exports/RAG E-Com Answering.json` : chatbot complet (mémoire persistante,
+  routage de la question, recherche hybride vectorielle + mots-clés, reranking,
+  réponse citée).
 - `setup.sql` : le SQL à exécuter une fois dans Supabase.
+- `README.md` (ce fichier) + ce dossier est la copie autonome à remettre au prof.
+
+## Sources TypeScript (workflow as code)
+
+Les sources `.ts` synchronisées avec l'instance vivent dans
+`../n8n/workflows/RAG E-Com/` (dossier imposé par l'outil n8ncli) :
+- `RAG E-Com Ingestion.workflow.ts`
+- `RAG E-Com Answering.workflow.ts`
+- `README.md` interne (état vérifié, pièges d'infra, historique).
 
 ## Installation (15 min)
 
-1. **Import** : dans n8n, "Import from file" pour chaque JSON.
+1. **Import** : dans n8n, "Import from file" pour chaque JSON de `exports/`.
 2. **Supabase** : créer un projet gratuit sur supabase.com, ouvrir le SQL Editor
    et exécuter tout `setup.sql`.
 3. **Credentials** (n8n → Credentials, garder les mêmes noms) :
